@@ -333,9 +333,10 @@ address once you have one. It ships pointing at the zero address placeholder.
 On-chain coordinates:
 
 - Network: GenLayer Bradbury testnet.
-- Live contract address: pending deployment.
-- Live frontend URL: pending deployment.
-- Explorer base: https://explorer-bradbury.genlayer.com
+- Live contract address: `0x13cf5282cB0E19eD2279f2a05cFCc90FFa22F03F`.
+- Live frontend URL: https://clarity-bridge.pages.dev/
+- Source: https://github.com/NAMI19622/clarity-bridge
+- Explorer base: https://explorer-bradbury.genlayer.com/address/0x13cf5282cB0E19eD2279f2a05cFCc90FFa22F03F
 
 Deployment notes. `scripts/deploy.py` reads `GENLAYER_PRIVATE_KEY` from the
 workspace root `.env`, deploys `contracts/contract.py`, waits for the deploy
