@@ -24,10 +24,12 @@ function hexToRgb(hex: string) {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
-// A device-pixel-ratio aware canvas. Two cores (the precise Concept Kernel on the
-// left, the simplified Draft on the right) are joined by meaning strands. As
-// fidelity falls and drift rises, the strands bow, fray, and desaturate, and the
-// distortion field between them warps. This is the semantic bridge metaphor.
+// A device-pixel-ratio aware canvas drawn on a VERTICAL axis. The precise
+// Concept Kernel core anchors the TOP, the simplified Draft core anchors the
+// BOTTOM, and meaning strands stretch top-to-bottom between them. As fidelity
+// falls and drift rises, the strands bow sideways, fray, and desaturate, and the
+// distortion field warps left-to-right across the span. This is the vertical
+// semantic bridge: original above, simplified below, the bend in between.
 export default function MeaningBridge({
   fidelity,
   drift,
@@ -66,6 +68,7 @@ export default function MeaningBridge({
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
+    // pointer reaction: strands lean toward the cursor as it sweeps the span
     const onMove = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
       pointer.current.x = (e.clientX - rect.left) / rect.width;
@@ -86,33 +89,37 @@ export default function MeaningBridge({
       t.current += reducedMotion ? 0 : 0.01;
       ctx.clearRect(0, 0, w, h);
 
-      const leftX = w * 0.16;
-      const rightX = w * 0.84;
-      const midY = h * 0.5;
-      const coreR = Math.min(w, h) * 0.085;
-      const span = rightX - leftX;
+      // vertical axis: top core (concept) -> bottom core (draft)
+      const topY = h * 0.16;
+      const bottomY = h * 0.84;
+      const midX = w * 0.5;
+      const coreR = Math.min(w, h) * 0.07;
+      const span = bottomY - topY;
       const strands = Math.max(3, Math.min(strandCount, 9));
 
-      const sag = (1 - fidelity) * h * 0.22 + drift * h * 0.16;
+      // lateral sag: low fidelity / high drift bows the strands sideways
+      const sag = (1 - fidelity) * w * 0.16 + drift * w * 0.12;
       const fray = drift;
+      const px = pointer.current.active ? (pointer.current.x - 0.5) : 0;
 
-      // distortion field: a faint warped grid living between the cores
+      // distortion field: a faint warped grid living between the cores,
+      // rows running down the span, columns spread across the width
       ctx.save();
       ctx.globalAlpha = 0.16 + drift * 0.22;
-      const cols = 14;
-      const rows = 6;
-      for (let gx = 0; gx <= cols; gx++) {
+      const rows = 14;
+      const cols = 6;
+      for (let gy = 0; gy <= rows; gy++) {
         ctx.beginPath();
-        for (let gy = 0; gy <= rows; gy++) {
-          const nx = gx / cols;
+        for (let gx = 0; gx <= cols; gx++) {
           const ny = gy / rows;
-          const baseX = leftX + nx * span;
-          const baseY = h * 0.2 + ny * h * 0.6;
+          const nx = gx / cols;
+          const baseY = topY + ny * span;
+          const baseX = w * 0.2 + nx * w * 0.6;
           const warp =
-            Math.sin(nx * 6 + t.current + ny * 2) * (8 + drift * 34) * (0.4 + fray);
-          const x = baseX;
-          const y = baseY + warp * Math.sin(nx * Math.PI);
-          if (gy === 0) ctx.moveTo(x, y);
+            Math.sin(ny * 6 + t.current + nx * 2) * (8 + drift * 34) * (0.4 + fray);
+          const x = baseX + warp * Math.sin(ny * Math.PI);
+          const y = baseY;
+          if (gx === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         const fieldCol = drift > 0.5 ? driftCol : a;
@@ -122,19 +129,19 @@ export default function MeaningBridge({
       }
       ctx.restore();
 
-      // meaning strands
+      // meaning strands stretched vertically between the two cores
       for (let i = 0; i < strands; i++) {
         const f = strands === 1 ? 0.5 : i / (strands - 1);
-        const yOff = (f - 0.5) * coreR * 2.4;
-        const sx = leftX + coreR * 0.7;
-        const sy = midY + yOff;
-        const ex = rightX - coreR * 0.7;
-        const ey = midY + yOff;
-        // a strand that frays drifts vertically and loses tautness
+        const xOff = (f - 0.5) * coreR * 2.4;
+        const sx = midX + xOff;
+        const sy = topY + coreR * 0.7;
+        const ex = midX + xOff;
+        const ey = bottomY - coreR * 0.7;
+        // a strand that frays drifts laterally and loses tautness
         const frayPhase = Math.sin(t.current * 1.4 + i * 1.3);
-        const cpX = (sx + ex) / 2;
-        const cpY =
-          midY + yOff + sag * (0.5 + 0.5 * Math.sin(i)) + frayPhase * fray * 26;
+        const cpY = (sy + ey) / 2;
+        const cpX =
+          midX + xOff + sag * (0.5 + 0.5 * Math.sin(i)) + frayPhase * fray * 26 + px * 30;
 
         const broken = fray > 0.6 && i % 2 === 0;
         ctx.beginPath();
@@ -155,16 +162,16 @@ export default function MeaningBridge({
       }
       ctx.setLineDash([]);
 
-      // meaning pulse traveling along the central strand during evaluation
+      // meaning pulse traveling down the central strand during evaluation
       if (gateProgress >= 0) {
         const p = gateProgress;
-        const sx = leftX + coreR * 0.7;
-        const ex = rightX - coreR * 0.7;
-        const cpX = (sx + ex) / 2;
-        const cpY = midY + sag * 0.5;
+        const sy = topY + coreR * 0.7;
+        const ey = bottomY - coreR * 0.7;
+        const cpY = (sy + ey) / 2;
+        const cpX = midX + sag * 0.5;
         const mt = 1 - p;
-        const x = mt * mt * sx + 2 * mt * p * cpX + p * p * ex;
-        const y = mt * mt * midY + 2 * mt * p * cpY + p * p * midY;
+        const y = mt * mt * sy + 2 * mt * p * cpY + p * p * ey;
+        const x = mt * mt * midX + 2 * mt * p * cpX + p * p * midX;
         ctx.beginPath();
         ctx.arc(x, y, 6, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${a.r},${a.g},${a.b},0.95)`;
@@ -173,10 +180,10 @@ export default function MeaningBridge({
         ctx.fill();
       }
 
-      // the two cores
-      const drawCore = (cx: number, solid: boolean) => {
+      // the two cores: solid precise kernel on top, dashed draft below
+      const drawCore = (cy: number, solid: boolean) => {
         ctx.save();
-        ctx.translate(cx, midY);
+        ctx.translate(midX, cy);
         const glow = reducedMotion ? 0.7 : 0.55 + Math.sin(t.current * 1.5) * 0.2;
         const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, coreR * 2.2);
         grad.addColorStop(0, `rgba(246,241,232,0.95)`);
@@ -200,8 +207,8 @@ export default function MeaningBridge({
         }
         ctx.restore();
       };
-      drawCore(leftX, true);
-      drawCore(rightX, false);
+      drawCore(topY, true);
+      drawCore(bottomY, false);
 
       if (!reducedMotion && document.visibilityState === 'visible') {
         raf.current = requestAnimationFrame(draw);
@@ -236,12 +243,12 @@ export default function MeaningBridge({
       <div
         style={{
           position: 'absolute',
-          left: '16%',
-          top: '50%',
-          transform: 'translate(-50%, 38px)',
+          left: '50%',
+          top: '16%',
+          transform: 'translate(-50%, -150%)',
           textAlign: 'center',
           pointerEvents: 'none',
-          width: 130,
+          width: 160,
         }}
       >
         <div className="eyebrow" style={{ color: 'var(--cyan)' }}>concept core</div>
@@ -250,12 +257,12 @@ export default function MeaningBridge({
       <div
         style={{
           position: 'absolute',
-          left: '84%',
-          top: '50%',
-          transform: 'translate(-50%, 38px)',
+          left: '50%',
+          top: '84%',
+          transform: 'translate(-50%, 60%)',
           textAlign: 'center',
           pointerEvents: 'none',
-          width: 130,
+          width: 160,
         }}
       >
         <div className="eyebrow" style={{ color: 'var(--violet)' }}>simplified draft</div>

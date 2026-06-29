@@ -67,7 +67,8 @@ body {
   font-family: var(--font-body);
   font-feature-settings: 'tnum' 1, 'ss01' 1;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 h1,
@@ -171,8 +172,76 @@ a {
   }
 }
 
+/* concept-kernel-forming entry: the original idea condenses into focus */
+@keyframes cb-kernel-form {
+  0% {
+    opacity: 0;
+    transform: translateY(-22px) scale(0.97);
+    filter: blur(7px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* the simplified draft settles up from below, facing the kernel */
+@keyframes cb-draft-settle {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* on-chain update stamp: a verdict punches onto the deck */
+@keyframes cb-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(1.42);
+    letter-spacing: 0.32em;
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    letter-spacing: 0.04em;
+  }
+}
+
 .rise {
   animation: cb-rise var(--dur-2) var(--ease) both;
+}
+
+.kernel-form {
+  animation: cb-kernel-form 620ms var(--ease) both;
+}
+
+.draft-settle {
+  animation: cb-draft-settle 560ms var(--ease) both;
+}
+
+.stamp-in {
+  animation: cb-stamp 520ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kernel-form,
+  .draft-settle,
+  .stamp-in {
+    animation: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

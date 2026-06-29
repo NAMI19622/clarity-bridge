@@ -25,14 +25,22 @@ import ConceptForm from '../components/ConceptForm';
 import LensForm from '../components/LensForm';
 import DraftComposer, { DraftInput } from '../components/DraftComposer';
 import DraftList from '../components/DraftList';
-import { Button, Toast, Pill } from '../components/ui';
+import { Button, Toast, Pill, Modal } from '../components/ui';
 
-export default function ObservatoryPage() {
+// ClarityBridge reads as an annotated study of two facing texts on a single
+// vertical axis: the precise Concept Kernel at the TOP, the simplified
+// Explanation Draft at the BOTTOM, and the MeaningBridge canvas in the MIDDLE
+// where strands stretch top-to-bottom and the distortion field bends. Selection
+// happens in a top picker, results read as a horizontal band below the draft,
+// and every form opens as an overlay. There is no left-rail/center/right-rail
+// split pane here.
+export default function BridgeStudyPage() {
   const store = useStore();
   const { concepts, summary, wallet, reducedMotion, setReducedMotion, refresh } = store;
 
   const [activeConcept, setActiveConcept] = useState<string | null>(null);
   const [lenses, setLenses] = useState<AudienceLens[]>([]);
+  const [activeLensId, setActiveLensId] = useState<string>('');
   const [drafts, setDrafts] = useState<ExplanationDraft[]>([]);
   const [activeDraft, setActiveDraft] = useState<ExplanationDraft | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
@@ -47,6 +55,9 @@ export default function ObservatoryPage() {
   const [showAbout, setShowAbout] = useState(false);
   const [showConceptForm, setShowConceptForm] = useState(false);
   const [showLensForm, setShowLensForm] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [showConceptPicker, setShowConceptPicker] = useState(false);
+  const [showCrossings, setShowCrossings] = useState(false);
   const [toast, setToast] = useState<{ message: string; kind: 'ok' | 'err' } | null>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -70,8 +81,13 @@ export default function ObservatoryPage() {
     try {
       const lensPage = await api.getLensesForConcept(conceptId, 0, 20);
       setLenses(lensPage.items);
+      setActiveLensId((prev) => {
+        if (prev && lensPage.items.some((l) => l.id === prev)) return prev;
+        return lensPage.items[0]?.id || '';
+      });
     } catch {
       setLenses([]);
+      setActiveLensId('');
     }
     try {
       const draftPage = await api.getDraftsForConcept(conceptId, 0, 20);
@@ -130,6 +146,7 @@ export default function ObservatoryPage() {
   const onCompose = useCallback(
     async (draft: DraftInput) => {
       if (!concept) return;
+      setShowComposer(false);
       try {
         if (!wallet) await store.connect();
         setTxPhase('signing');
@@ -263,8 +280,14 @@ export default function ObservatoryPage() {
 
   const busy = txPhase === 'pending' || txPhase === 'signing';
 
+  const activeLens = useMemo(
+    () => lenses.find((l) => l.id === activeLensId),
+    [lenses, activeLensId],
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingBottom: 64 }}>
+      {/* masthead: identity, live counts, controls */}
       <header
         style={{
           display: 'flex',
@@ -273,6 +296,11 @@ export default function ObservatoryPage() {
           padding: '12px 22px',
           borderBottom: '1px solid var(--border)',
           flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          background: 'rgba(5,6,10,0.72)',
+          backdropFilter: 'blur(10px)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
@@ -286,7 +314,7 @@ export default function ObservatoryPage() {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 18, marginLeft: 22, fontSize: '0.72rem', color: 'var(--mist-2)' }}>
+        <div style={{ display: 'flex', gap: 18, marginLeft: 22, fontSize: '0.72rem', color: 'var(--mist-2)', flexWrap: 'wrap' }}>
           <Stat label="Kernels" value={summary?.concepts} />
           <Stat label="Lenses" value={summary?.lenses} />
           <Stat label="Crossings" value={summary?.drafts} />
@@ -308,218 +336,333 @@ export default function ObservatoryPage() {
         </div>
       </header>
 
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '264px 1fr 348px', minHeight: 0 }}>
-        {/* left rail: concept kernels and their lenses */}
-        <aside style={{ borderRight: '1px solid var(--border)', padding: 16, overflowY: 'auto' }}>
-          <RailTitle title="Concept kernels" onAdd={() => setShowConceptForm(true)} />
-          <div style={{ display: 'grid', gap: 8, marginBottom: 22 }}>
-            {concepts.length === 0 && (
-              <div style={{ fontSize: '0.76rem', color: 'var(--mist-3)', lineHeight: 1.5 }}>
-                No kernels yet. Seal a concept kernel to anchor one end of a bridge.
-              </div>
-            )}
-            {concepts.map((c) => {
-              const active = c.id === activeConcept;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveConcept(c.id)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '11px 12px',
-                    borderRadius: 'var(--radius-m)',
-                    border: `1px solid ${active ? 'var(--border-strong)' : 'var(--border)'}`,
-                    background: active ? 'rgba(93,235,255,0.07)' : 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--paper)' }}>{c.title}</div>
-                  <div style={{ fontSize: '0.66rem', color: 'var(--mist-2)', marginTop: 2 }}>
-                    {c.domain || 'general'} | {c.essentialClaims.length} claims | {c.draftCount} crossings
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+      {/* top selector bar: choose which kernel is under study and which lens
+          frames the simplification. This replaces the old fixed left rail. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 22px',
+          borderBottom: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          position: 'sticky',
+          top: 60,
+          zIndex: 20,
+          background: 'rgba(5,6,10,0.6)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <span className="eyebrow">studying</span>
+        <button
+          onClick={() => setShowConceptPicker((s) => !s)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 9,
+            padding: '7px 14px',
+            borderRadius: 'var(--radius-pill)',
+            border: '1px solid var(--border-strong)',
+            background: 'rgba(93,235,255,0.07)',
+            color: 'var(--paper)',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            maxWidth: 360,
+          }}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {concept ? concept.title : 'No kernel selected'}
+          </span>
+          <span style={{ color: 'var(--cyan)', fontSize: '0.7rem' }}>{showConceptPicker ? 'close' : 'change'}</span>
+        </button>
 
-          {concept && (
-            <>
-              <RailTitle title="Audience lenses" onAdd={() => setShowLensForm(true)} />
-              <div style={{ display: 'grid', gap: 7 }}>
-                {lenses.length === 0 && (
-                  <div style={{ fontSize: '0.74rem', color: 'var(--mist-3)', lineHeight: 1.5 }}>
-                    No lenses yet. Add one to define who a simplification is for.
-                  </div>
-                )}
-                {lenses.map((l) => (
-                  <div
-                    key={l.id}
-                    style={{
-                      padding: '8px 11px',
-                      borderRadius: 'var(--radius-m)',
-                      border: '1px solid var(--border-violet)',
-                      background: 'rgba(167,139,250,0.05)',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.78rem', color: 'var(--paper-2)', fontWeight: 600 }}>
-                      {l.audienceName}
-                    </div>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--mist-2)', marginTop: 1 }}>
-                      {l.knowledgeLevel.replace(/_/g, ' ')} | analogy {l.analogyPreference} | caveats {l.caveatRequirement.replace(/_/g, ' ')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </aside>
+        <div style={{ width: 1, height: 22, background: 'var(--border)' }} />
 
-        {/* center: the meaning bridge and the crossing composer */}
-        <main style={{ overflowY: 'auto', padding: '18px 24px', display: 'grid', gap: 18, alignContent: 'start' }}>
-          <section
+        <span className="eyebrow">through lens</span>
+        {lenses.length > 0 ? (
+          <select
+            value={activeLensId}
+            onChange={(e) => setActiveLensId(e.target.value)}
             style={{
-              height: 340,
-              borderRadius: 'var(--radius-l)',
-              border: '1px solid var(--border)',
-              background: 'radial-gradient(620px 420px at 50% 40%, rgba(93,235,255,0.06), transparent 70%)',
-              position: 'relative',
-              overflow: 'hidden',
+              padding: '7px 12px',
+              borderRadius: 'var(--radius-pill)',
+              border: '1px solid var(--border-violet)',
+              background: 'rgba(167,139,250,0.06)',
+              color: 'var(--paper)',
+              fontSize: '0.8rem',
+              maxWidth: 260,
             }}
           >
-            <MeaningBridge
-              fidelity={fidelity}
-              drift={drift}
-              strandCount={strandCount}
-              conceptLabel={concept?.title || 'No kernel'}
-              draftLabel={activeDraft ? (activeDraft.evaluated ? gateLabel(activeDraft.gateResult) : 'pending') : 'No draft'}
-              gateProgress={gateProgress}
-              accent={accent}
-              reducedMotion={reducedMotion}
-            />
-            {concept && (
-              <div style={{ position: 'absolute', left: 18, bottom: 14, fontSize: '0.7rem', color: 'var(--mist-2)' }}>
-                <span style={{ color: 'var(--paper-2)', fontWeight: 600 }}>{concept.title}</span>
-                <span style={{ marginLeft: 8 }}>level {concept.allowedSimplificationLevel}</span>
-              </div>
-            )}
-          </section>
+            {lenses.map((l) => (
+              <option key={l.id} value={l.id} style={{ background: 'var(--surface-solid)' }}>
+                {l.audienceName} ({l.knowledgeLevel.replace(/_/g, ' ')})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ fontSize: '0.74rem', color: 'var(--mist-3)' }}>no lens yet</span>
+        )}
+        {concept && (
+          <button onClick={() => setShowLensForm(true)} style={ghostBtn}>
+            + lens
+          </button>
+        )}
 
-          {concept ? (
-            <>
-              <section style={panel}>
-                <SectionTitle title="The original idea" />
-                <p style={{ fontSize: '0.86rem', color: 'var(--paper-2)', lineHeight: 1.6 }}>
-                  {concept.originalExplanation}
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 12 }}>
-                  {concept.essentialClaims.map((claim, i) => (
-                    <Pill key={i} color="var(--cyan)">
-                      claim {i + 1}
-                    </Pill>
-                  ))}
-                  {concept.forbiddenOverclaims.map((_, i) => (
-                    <Pill key={'o' + i} color="var(--drift)">
-                      no overclaim {i + 1}
-                    </Pill>
-                  ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowConceptForm(true)} style={ghostBtn}>
+            + new kernel
+          </button>
+        </div>
+
+        {/* slide-down kernel picker */}
+        <AnimatePresence>
+          {showConceptPicker && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                flexBasis: '100%',
+                marginTop: 8,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 8,
+              }}
+            >
+              {concepts.length === 0 && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--mist-3)', lineHeight: 1.5 }}>
+                  No kernels yet. Seal a concept kernel to anchor the top of a bridge.
                 </div>
-              </section>
-
-              <section style={panel}>
-                <SectionTitle title="Compose a simplified explanation" />
-                <DraftComposer lenses={lenses} busy={busy} onSubmit={onCompose} />
-              </section>
-
-              <section style={panel}>
-                <SectionTitle title="Crossings for this kernel" />
-                <DraftList drafts={drafts} activeId={activeDraft?.id || null} onSelect={selectDraft} />
-              </section>
-            </>
-          ) : (
-            <div style={{ ...panel, borderStyle: 'dashed', textAlign: 'center', color: 'var(--mist-3)', padding: 40 }}>
-              <p style={{ lineHeight: 1.6, marginBottom: 14 }}>
-                Seal a concept kernel to anchor the precise meaning, then draft simplifications and
-                watch how faithfully they cross the bridge.
-              </p>
-              <Button onClick={() => setShowConceptForm(true)}>Seal the first kernel</Button>
-            </div>
+              )}
+              {concepts.map((c) => {
+                const active = c.id === activeConcept;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setActiveConcept(c.id);
+                      setShowConceptPicker(false);
+                    }}
+                    style={{
+                      textAlign: 'left',
+                      padding: '11px 12px',
+                      borderRadius: 'var(--radius-m)',
+                      border: `1px solid ${active ? 'var(--border-strong)' : 'var(--border)'}`,
+                      background: active ? 'rgba(93,235,255,0.07)' : 'rgba(255,255,255,0.02)',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--paper)' }}>{c.title}</div>
+                    <div style={{ fontSize: '0.66rem', color: 'var(--mist-2)', marginTop: 2 }}>
+                      {c.domain || 'general'} | {c.essentialClaims.length} claims | {c.draftCount} crossings
+                    </div>
+                  </button>
+                );
+              })}
+            </motion.div>
           )}
-        </main>
+        </AnimatePresence>
+      </div>
 
-        {/* right: the fidelity inspector */}
-        <aside style={{ borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto' }}>
-          <SectionTitle title="Fidelity gate" />
-          {activeDraft ? (
-            <div style={{ display: 'grid', gap: 16 }}>
-              <div style={{ ...subPanel }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--paper-2)', lineHeight: 1.5 }}>
-                  {activeDraft.simplifiedExplanation}
+      {/* the vertical bridge study: kernel on top, canvas in the middle, draft
+          on the bottom, all centered on one reading axis */}
+      <main
+        style={{
+          width: '100%',
+          maxWidth: 940,
+          margin: '0 auto',
+          padding: '26px 22px 8px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 0,
+        }}
+      >
+        {concept ? (
+          <>
+            {/* TOP: the original Concept Kernel text */}
+            <section key={concept.id} className={reducedMotion ? undefined : 'kernel-form'} style={kernelPanel}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div>
+                  <div className="eyebrow" style={{ color: 'var(--cyan)' }}>concept kernel . original</div>
+                  <h2 style={{ fontSize: '1.18rem', marginTop: 4 }}>{concept.title}</h2>
                 </div>
-                {!activeDraft.evaluated && (
-                  <Button onClick={() => evaluateExisting(activeDraft)} disabled={busy} style={{ marginTop: 12, width: '100%' }}>
-                    {busy ? 'Crossing...' : 'Send across the bridge'}
+                <span style={{ fontSize: '0.66rem', color: 'var(--mist-2)', whiteSpace: 'nowrap' }}>
+                  {concept.domain || 'general'} . level {concept.allowedSimplificationLevel}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--paper-2)', lineHeight: 1.62 }}>
+                {concept.originalExplanation}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 13 }}>
+                {concept.essentialClaims.map((claim, i) => (
+                  <Pill key={i} color="var(--cyan)">
+                    claim {i + 1}
+                  </Pill>
+                ))}
+                {concept.forbiddenOverclaims.map((_, i) => (
+                  <Pill key={'o' + i} color="var(--drift)">
+                    no overclaim {i + 1}
+                  </Pill>
+                ))}
+                {concept.requiredCaveats.map((_, i) => (
+                  <Pill key={'c' + i} color="var(--gold)">
+                    caveat {i + 1}
+                  </Pill>
+                ))}
+              </div>
+            </section>
+
+            {/* MIDDLE: the MeaningBridge canvas drawn on the vertical axis */}
+            <section
+              style={{
+                height: 380,
+                position: 'relative',
+                overflow: 'hidden',
+                borderLeft: '1px solid var(--border)',
+                borderRight: '1px solid var(--border)',
+                background: 'radial-gradient(520px 460px at 50% 50%, rgba(93,235,255,0.06), transparent 70%)',
+              }}
+            >
+              <MeaningBridge
+                fidelity={fidelity}
+                drift={drift}
+                strandCount={strandCount}
+                conceptLabel={concept.title}
+                draftLabel={activeDraft ? (activeDraft.evaluated ? gateLabel(activeDraft.gateResult) : 'pending') : 'No draft'}
+                gateProgress={gateProgress}
+                accent={accent}
+                reducedMotion={reducedMotion}
+              />
+              {activeLens && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 14,
+                    top: 12,
+                    fontSize: '0.66rem',
+                    color: 'var(--violet)',
+                    border: '1px solid var(--border-violet)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '4px 11px',
+                    background: 'rgba(167,139,250,0.06)',
+                  }}
+                >
+                  lens: {activeLens.audienceName}
+                </div>
+              )}
+            </section>
+
+            {/* BOTTOM: the simplified Explanation Draft text */}
+            <section
+              key={activeDraft?.id || 'empty-draft'}
+              className={reducedMotion ? undefined : 'draft-settle'}
+              style={draftPanel}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div className="eyebrow" style={{ color: 'var(--violet)' }}>explanation draft . simplified</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setShowCrossings(true)} style={ghostBtn}>
+                    Crossings ({drafts.length})
+                  </button>
+                  <Button onClick={() => setShowComposer(true)} disabled={lenses.length === 0} style={{ padding: '7px 14px' }}>
+                    Compose draft
                   </Button>
-                )}
+                </div>
               </div>
 
-              {activeDraft.evaluated && evaluation && (
-                <>
-                  <div style={subPanel}>
-                    <div className="eyebrow" style={{ marginBottom: 8 }}>distortion field</div>
-                    <DistortionField
-                      drift={drift}
-                      distortions={evaluation.distortionTypes}
-                      color={gateColor(activeDraft.gateResult)}
-                    />
-                  </div>
+              {activeDraft ? (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--paper-2)', lineHeight: 1.62 }}>
+                    {activeDraft.simplifiedExplanation}
+                  </p>
+                  {activeDraft.analogyUsed && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--mist)', fontStyle: 'italic' }}>
+                      analogy: {activeDraft.analogyUsed}
+                    </div>
+                  )}
+                  {!activeDraft.evaluated && (
+                    <Button onClick={() => evaluateExisting(activeDraft)} disabled={busy} style={{ justifySelf: 'start' }}>
+                      {busy ? 'Crossing...' : 'Send across the bridge'}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.84rem', color: 'var(--mist-3)', lineHeight: 1.6 }}>
+                  No draft on the lower anchor yet. Compose a simplified explanation for the chosen
+                  lens and send it up the bridge to see how faithfully the meaning carries.
+                </p>
+              )}
+            </section>
 
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeDraft.gateResult}
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
+            {/* horizontal results band below the draft: the verdict reads as a
+                row of cards, not a fixed right inspector aside */}
+            {activeDraft?.evaluated && evaluation && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gap: 14,
+                  marginTop: 22,
+                }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeDraft.gateResult}
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ ...bandCard, borderColor: gateColor(activeDraft.gateResult) }}
+                  >
+                    <div className="eyebrow" style={{ marginBottom: 8 }}>verdict</div>
+                    <div
+                      className={reducedMotion ? undefined : 'stamp-in'}
                       style={{
-                        ...subPanel,
-                        borderColor: gateColor(activeDraft.gateResult),
-                        textAlign: 'center',
+                        fontFamily: 'var(--font-display)',
+                        fontWeight: 700,
+                        fontSize: '1.08rem',
+                        color: gateColor(activeDraft.gateResult),
                       }}
                     >
-                      <div
-                        style={{
-                          fontFamily: 'var(--font-display)',
-                          fontWeight: 700,
-                          fontSize: '1.05rem',
-                          color: gateColor(activeDraft.gateResult),
-                        }}
-                      >
-                        {gateLabel(activeDraft.gateResult)}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--mist)', marginTop: 6, lineHeight: 1.5 }}>
-                        {evaluation.reason}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 10, fontSize: '0.7rem', color: 'var(--mist-2)' }}>
-                        <span>Fidelity {bps(evaluation.fidelityBps)}</span>
-                        <span>Clarity {bps(evaluation.clarityBps)}</span>
-                        <span>Confidence {bps(evaluation.confidenceBps)}</span>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
+                      {gateLabel(activeDraft.gateResult)}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--mist)', marginTop: 7, lineHeight: 1.5 }}>
+                      {evaluation.reason}
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, marginTop: 11, fontSize: '0.7rem', color: 'var(--mist-2)', flexWrap: 'wrap' }}>
+                      <span>Fidelity {bps(evaluation.fidelityBps)}</span>
+                      <span>Clarity {bps(evaluation.clarityBps)}</span>
+                      <span>Confidence {bps(evaluation.confidenceBps)}</span>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
 
-                  <div>
-                    <div className="eyebrow" style={{ marginBottom: 8 }}>caveat anchors</div>
-                    <CaveatAnchorRow
-                      caveats={concept?.requiredCaveats || []}
-                      missingIndices={missingCaveatIndices}
-                      active={sealAnim}
-                    />
-                  </div>
+                <div style={bandCard}>
+                  <div className="eyebrow" style={{ marginBottom: 8 }}>distortion field</div>
+                  <DistortionField
+                    drift={drift}
+                    distortions={evaluation.distortionTypes}
+                    color={gateColor(activeDraft.gateResult)}
+                  />
+                </div>
 
-                  <div>
-                    <div className="eyebrow" style={{ marginBottom: 8 }}>validator lenses</div>
-                    <ValidatorLensRing validators={evaluation.validatorSummary} active={sealAnim} />
-                  </div>
+                <div style={bandCard}>
+                  <div className="eyebrow" style={{ marginBottom: 8 }}>caveat anchors</div>
+                  <CaveatAnchorRow
+                    caveats={concept.requiredCaveats || []}
+                    missingIndices={missingCaveatIndices}
+                    active={sealAnim}
+                  />
+                </div>
 
+                <div style={bandCard}>
+                  <div className="eyebrow" style={{ marginBottom: 8 }}>validator lenses</div>
+                  <ValidatorLensRing validators={evaluation.validatorSummary} active={sealAnim} />
+                </div>
+
+                <div style={{ ...bandCard, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'stretch' }}>
+                  <div className="eyebrow">clarity certificate</div>
                   {certificate ? (
-                    <div style={{ ...subPanel, display: 'flex', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
                       <CertificateSeal
                         gate={certificate.gate}
                         proofHash={certificate.proofHash}
@@ -534,11 +677,10 @@ export default function ObservatoryPage() {
                       Seal clarity certificate
                     </Button>
                   ) : (
-                    <div style={{ fontSize: '0.74rem', color: 'var(--mist-3)', textAlign: 'center', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--mist-3)', lineHeight: 1.5 }}>
                       This crossing is not certifiable. Only a faithful crossing can be sealed.
                     </div>
                   )}
-
                   <Button
                     variant="ghost"
                     onClick={() => downloadJson(`${evaluation.id}.json`, evaluation)}
@@ -546,17 +688,52 @@ export default function ObservatoryPage() {
                   >
                     Export evaluation JSON
                   </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <ValidatorLensRing validators={[]} />
-          )}
-        </aside>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div
+            style={{
+              ...kernelPanel,
+              borderStyle: 'dashed',
+              textAlign: 'center',
+              color: 'var(--mist-3)',
+              padding: 48,
+            }}
+          >
+            <p style={{ lineHeight: 1.6, marginBottom: 16 }}>
+              Seal a concept kernel to anchor the precise meaning at the top of the bridge, then
+              draft simplifications below and watch how faithfully they cross.
+            </p>
+            <Button onClick={() => setShowConceptForm(true)}>Seal the first kernel</Button>
+          </div>
+        )}
+      </main>
+
+      {/* the on-chain transaction lifecycle, fixed to the foot of the viewport */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40 }}>
+        <TransactionTheater phase={txPhase} hash={txHash} message={txMessage} />
       </div>
 
-      <TransactionTheater phase={txPhase} hash={txHash} message={txMessage} />
-
+      {/* overlays */}
+      {showComposer && concept && (
+        <Modal title="Compose a simplified explanation" onClose={() => setShowComposer(false)} wide>
+          <DraftComposer lenses={lenses} busy={busy} onSubmit={onCompose} />
+        </Modal>
+      )}
+      {showCrossings && (
+        <Modal title="Crossings for this kernel" onClose={() => setShowCrossings(false)}>
+          <DraftList
+            drafts={drafts}
+            activeId={activeDraft?.id || null}
+            onSelect={(d) => {
+              selectDraft(d);
+              setShowCrossings(false);
+            }}
+          />
+        </Modal>
+      )}
       {showAbout && <AboutDrawer onClose={() => setShowAbout(false)} />}
       {showConceptForm && <ConceptForm onClose={() => setShowConceptForm(false)} onDone={notify} />}
       {showLensForm && concept && (
@@ -576,18 +753,29 @@ const ghostBtn: React.CSSProperties = {
   padding: '6px 12px',
 };
 
-const panel: React.CSSProperties = {
+// the top kernel anchor: a flat-topped reading panel
+const kernelPanel: React.CSSProperties = {
+  borderRadius: 'var(--radius-l) var(--radius-l) 0 0',
+  border: '1px solid var(--border)',
+  borderBottom: 'none',
+  background: 'var(--surface)',
+  padding: '20px 24px',
+};
+
+// the bottom draft anchor: a flat-bottomed reading panel facing the kernel
+const draftPanel: React.CSSProperties = {
+  borderRadius: '0 0 var(--radius-l) var(--radius-l)',
+  border: '1px solid var(--border)',
+  borderTop: 'none',
+  background: 'var(--surface)',
+  padding: '20px 24px',
+};
+
+const bandCard: React.CSSProperties = {
   borderRadius: 'var(--radius-l)',
   border: '1px solid var(--border)',
   background: 'var(--surface)',
-  padding: 18,
-};
-
-const subPanel: React.CSSProperties = {
-  padding: 12,
-  borderRadius: 'var(--radius-m)',
-  border: '1px solid var(--border)',
-  background: 'rgba(255,255,255,0.02)',
+  padding: 16,
 };
 
 function Stat({ label, value }: { label: string; value?: number }) {
@@ -601,49 +789,8 @@ function Stat({ label, value }: { label: string; value?: number }) {
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <div
-      style={{
-        fontSize: '0.66rem',
-        letterSpacing: '0.16em',
-        textTransform: 'uppercase',
-        color: 'var(--mist-2)',
-        marginBottom: 14,
-      }}
-    >
-      {title}
-    </div>
-  );
-}
-
-function RailTitle({ title, onAdd }: { title: string; onAdd: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-      <span style={{ fontSize: '0.64rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--mist-2)' }}>
-        {title}
-      </span>
-      <button
-        onClick={onAdd}
-        aria-label={'Add ' + title}
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: 999,
-          border: '1px solid var(--border-strong)',
-          background: 'transparent',
-          color: 'var(--cyan)',
-          fontSize: '1rem',
-          lineHeight: 1,
-        }}
-      >
-        +
-      </button>
-    </div>
-  );
-}
-
 function BridgeMark() {
+  // a vertical bridge mark: two cores stacked, strands bending between them
   return (
     <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
       <defs>
@@ -652,10 +799,10 @@ function BridgeMark() {
           <stop offset="100%" stopColor="#a78bfa" />
         </linearGradient>
       </defs>
-      <circle cx="7" cy="17" r="4" fill="url(#bridge)" />
-      <circle cx="27" cy="17" r="4" fill="none" stroke="url(#bridge)" strokeWidth="1.6" strokeDasharray="2 3" />
-      <path d="M7 17 C 14 8, 20 26, 27 17" fill="none" stroke="url(#bridge)" strokeWidth="1.6" />
-      <path d="M7 17 C 14 26, 20 8, 27 17" fill="none" stroke="url(#bridge)" strokeWidth="1" strokeOpacity="0.5" />
+      <circle cx="17" cy="7" r="4" fill="url(#bridge)" />
+      <circle cx="17" cy="27" r="4" fill="none" stroke="url(#bridge)" strokeWidth="1.6" strokeDasharray="2 3" />
+      <path d="M17 7 C 8 14, 26 20, 17 27" fill="none" stroke="url(#bridge)" strokeWidth="1.6" />
+      <path d="M17 7 C 26 14, 8 20, 17 27" fill="none" stroke="url(#bridge)" strokeWidth="1" strokeOpacity="0.5" />
     </svg>
   );
 }
