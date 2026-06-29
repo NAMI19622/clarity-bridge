@@ -368,7 +368,9 @@ export default function MeaningBridge({
       </div>
 
       {/* composed empty state: taut strands already render behind this, so the
-          span is never a void. an inline prompt invites the first draft. */}
+          span is never a void. an inline prompt invites the first draft. The
+          copy sits on its own blurred plate so it never tangles with the
+          strands drawn behind it. */}
       {!hasDraft && (
         <div
           style={{
@@ -377,8 +379,14 @@ export default function MeaningBridge({
             top: '50%',
             transform: 'translate(-50%, -50%)',
             textAlign: 'center',
-            width: 'min(78%, 340px)',
+            width: 'min(74%, 320px)',
             pointerEvents: 'none',
+            padding: '16px 18px',
+            borderRadius: 'var(--radius-m)',
+            border: '1px solid var(--border)',
+            background: 'rgba(5,6,10,0.82)',
+            backdropFilter: 'blur(6px)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.55)',
           }}
         >
           <div
