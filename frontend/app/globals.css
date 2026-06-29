@@ -264,36 +264,9 @@ a {
   animation: cb-rise var(--dur-2) var(--ease) both;
 }
 
-/* ---- ClarityBridge editorial study masthead ---------------------------- */
-/* A printed-journal nameplate: ruled, small-caps, ink-on-paper. Deliberately
-   unlike a generic app bar, a manila folder tab, or an on-air broadcast strip. */
-.study-masthead {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  flex-shrink: 0;
-  background:
-    linear-gradient(180deg, rgba(246, 241, 232, 0.05), rgba(5, 6, 10, 0.86) 70%),
-    rgba(5, 6, 10, 0.82);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-}
-
-.study-rule {
-  height: 1px;
-  width: 100%;
-  transform-origin: left center;
-  background: linear-gradient(90deg, var(--gold), rgba(247, 201, 72, 0.12) 88%, transparent);
-}
-
-.study-rule.thin {
-  background: linear-gradient(90deg, rgba(93, 235, 255, 0.5), rgba(93, 235, 255, 0.05) 80%, transparent);
-}
-
-.study-rule.draw {
-  animation: cb-rule-ink 620ms var(--ease) both;
-}
-
+/* ---- ClarityBridge editorial study chrome ------------------------------ */
+/* Shared editorial typography: a printed-journal nameplate, small-caps, and
+   ink-on-paper detailing, reused by the left vertical spine. */
 .study-nameplate {
   font-family: var(--font-display);
   font-weight: 700;
@@ -354,6 +327,101 @@ a {
   border-color: rgba(247, 201, 72, 0.5);
 }
 
+/* ---- ClarityBridge left vertical spine ---------------------------------- */
+/* The chrome is docked to a narrow gutter rail down the left edge of the
+   viewport, full height, instead of a horizontal top bar. Brand, nameplate,
+   fidelity gauge, and controls stack top to bottom in this spine; the study
+   column fills the width to its right. */
+.study-spine {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex-shrink: 0;
+  width: 76px;
+  height: 100vh;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 6px 10px;
+  background:
+    linear-gradient(180deg, rgba(246, 241, 232, 0.05), rgba(5, 6, 10, 0.86) 70%),
+    rgba(5, 6, 10, 0.82);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--border);
+  overflow: visible;
+}
+
+.spine-rule {
+  height: 1px;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--gold), rgba(247, 201, 72, 0.12) 88%, transparent);
+}
+
+.spine-rule.thin {
+  margin-top: 8px;
+  background: linear-gradient(90deg, rgba(93, 235, 255, 0.5), rgba(93, 235, 255, 0.05) 80%, transparent);
+}
+
+.spine-rule.draw {
+  animation: cb-rule-ink 620ms var(--ease) both;
+}
+
+/* the nameplate runs vertically down the spine, like a book spine title */
+.spine-nameplate {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 1.05rem;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+}
+
+.spine-edition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.spine-colophon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.spine-verdict {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.16em;
+  max-height: 92px;
+  overflow: hidden;
+}
+
+.spine-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* spine variant of the editorial toggle: centered, full-rail width */
+.spine-toggle {
+  text-align: center;
+  padding: 5px 4px;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
 .needle-settle {
   animation: cb-needle-settle 560ms var(--ease) both;
   transform-origin: bottom center;
@@ -379,7 +447,7 @@ a {
   .kernel-form,
   .draft-settle,
   .stamp-in,
-  .study-rule.draw,
+  .spine-rule.draw,
   .needle-settle,
   .await-pulse {
     animation: none !important;

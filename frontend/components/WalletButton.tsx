@@ -5,11 +5,28 @@ import { useStore } from '../lib/store';
 import { shortAddr } from '../lib/format';
 import { explorerAddress } from '../lib/config';
 
-export default function WalletButton() {
+interface WalletButtonProps {
+  // 'bottom-right' anchors the menu under the button (default, used in a wide
+  // bar). 'right' expands the menu to the right of the button so it works
+  // inside a narrow vertical spine.
+  menuPlacement?: 'bottom-right' | 'right';
+}
+
+export default function WalletButton({ menuPlacement = 'bottom-right' }: WalletButtonProps) {
   const { wallet, connect, disconnect } = useStore();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const toRight = menuPlacement === 'right';
+  // popup anchoring: under the button in a wide bar, or to the right of the
+  // button when docked inside the narrow left spine.
+  const popAnchor: React.CSSProperties = toRight
+    ? { left: 'calc(100% + 10px)', bottom: 0 }
+    : { top: '115%', right: 0 };
+  const errAnchor: React.CSSProperties = toRight
+    ? { left: 'calc(100% + 10px)', bottom: 0 }
+    : { top: '110%', right: 0 };
 
   const onConnect = async () => {
     setBusy(true);
@@ -45,8 +62,7 @@ export default function WalletButton() {
           <div
             style={{
               position: 'absolute',
-              top: '110%',
-              right: 0,
+              ...errAnchor,
               width: 220,
               fontSize: '0.7rem',
               color: 'var(--drift)',
@@ -94,8 +110,7 @@ export default function WalletButton() {
         <div
           style={{
             position: 'absolute',
-            top: '115%',
-            right: 0,
+            ...popAnchor,
             width: 240,
             background: 'var(--surface-solid)',
             border: '1px solid var(--border)',

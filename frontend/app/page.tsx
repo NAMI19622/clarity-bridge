@@ -20,7 +20,7 @@ import CertificateSeal from '../components/CertificateSeal';
 import ValidatorLensRing from '../components/ValidatorLensRing';
 import TransactionTheater, { TxPhase } from '../components/TransactionTheater';
 import AboutDrawer from '../components/AboutDrawer';
-import StudyMasthead from '../components/StudyMasthead';
+import StudySpine from '../components/StudySpine';
 import ConceptForm from '../components/ConceptForm';
 import LensForm from '../components/LensForm';
 import DraftComposer, { DraftInput } from '../components/DraftComposer';
@@ -296,10 +296,11 @@ export default function BridgeStudyPage() {
       : 'no kernel';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingBottom: 64 }}>
-      {/* the editorial study masthead: nameplate, edition line, fidelity gauge,
-          and ruled editorial toggles. Distinct from every sibling chrome. */}
-      <StudyMasthead
+    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'flex-start' }}>
+      {/* the left vertical spine holds all chrome: pressmark, vertical
+          nameplate, compact fidelity gauge, and controls (wallet, motion,
+          colophon), stacked top to bottom. There is no horizontal top bar. */}
+      <StudySpine
         summary={summary}
         fidelity={fidelity}
         drift={drift}
@@ -310,7 +311,18 @@ export default function BridgeStudyPage() {
         onAbout={() => setShowAbout(true)}
       />
 
-      {/* top selector bar: choose which kernel is under study and which lens
+      {/* the study column fills the width to the right of the spine */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          paddingBottom: 64,
+        }}
+      >
+        {/* top selector bar: choose which kernel is under study and which lens
           frames the simplification. This replaces the old fixed left rail. */}
       <div
         style={{
@@ -687,9 +699,11 @@ export default function BridgeStudyPage() {
         )}
       </main>
 
-      {/* the on-chain transaction lifecycle, fixed to the foot of the viewport */}
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40 }}>
+      {/* the on-chain transaction lifecycle, fixed to the foot of the study
+          column, offset past the left spine so it never covers the controls */}
+      <div style={{ position: 'fixed', left: 76, right: 0, bottom: 0, zIndex: 40 }}>
         <TransactionTheater phase={txPhase} hash={txHash} message={txMessage} />
+      </div>
       </div>
 
       {/* overlays */}
