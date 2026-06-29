@@ -19,8 +19,8 @@ import DistortionField from '../components/DistortionField';
 import CertificateSeal from '../components/CertificateSeal';
 import ValidatorLensRing from '../components/ValidatorLensRing';
 import TransactionTheater, { TxPhase } from '../components/TransactionTheater';
-import WalletButton from '../components/WalletButton';
 import AboutDrawer from '../components/AboutDrawer';
+import StudyMasthead from '../components/StudyMasthead';
 import ConceptForm from '../components/ConceptForm';
 import LensForm from '../components/LensForm';
 import DraftComposer, { DraftInput } from '../components/DraftComposer';
@@ -285,56 +285,30 @@ export default function BridgeStudyPage() {
     [lenses, activeLensId],
   );
 
+  // headline readout for the masthead fidelity gauge: a settled verdict, a
+  // pending crossing, or the kernel baseline when nothing has crossed yet.
+  const verdictLabel = activeDraft
+    ? activeDraft.evaluated
+      ? gateLabel(activeDraft.gateResult)
+      : 'pending'
+    : concept
+      ? 'awaiting draft'
+      : 'no kernel';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingBottom: 64 }}>
-      {/* masthead: identity, live counts, controls */}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '12px 22px',
-          borderBottom: '1px solid var(--border)',
-          flexShrink: 0,
-          position: 'sticky',
-          top: 0,
-          zIndex: 30,
-          background: 'rgba(5,6,10,0.72)',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-          <BridgeMark />
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.04rem', lineHeight: 1 }}>
-              ClarityBridge
-            </div>
-            <div style={{ fontSize: '0.66rem', color: 'var(--mist-2)' }}>
-              Make it simpler without making it false
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 18, marginLeft: 22, fontSize: '0.72rem', color: 'var(--mist-2)', flexWrap: 'wrap' }}>
-          <Stat label="Kernels" value={summary?.concepts} />
-          <Stat label="Lenses" value={summary?.lenses} />
-          <Stat label="Crossings" value={summary?.drafts} />
-          <Stat label="Faithful" value={summary?.faithful} />
-          <Stat label="Certified" value={summary?.certificates} />
-        </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            onClick={() => setReducedMotion(!reducedMotion)}
-            title="Toggle reduced motion"
-            style={ghostBtn}
-          >
-            {reducedMotion ? 'Motion off' : 'Motion on'}
-          </button>
-          <button onClick={() => setShowAbout(true)} style={ghostBtn}>
-            About
-          </button>
-          <WalletButton />
-        </div>
-      </header>
+      {/* the editorial study masthead: nameplate, edition line, fidelity gauge,
+          and ruled editorial toggles. Distinct from every sibling chrome. */}
+      <StudyMasthead
+        summary={summary}
+        fidelity={fidelity}
+        drift={drift}
+        verdictLabel={verdictLabel}
+        accent={accent}
+        reducedMotion={reducedMotion}
+        setReducedMotion={setReducedMotion}
+        onAbout={() => setShowAbout(true)}
+      />
 
       {/* top selector bar: choose which kernel is under study and which lens
           frames the simplification. This replaces the old fixed left rail. */}
@@ -346,9 +320,6 @@ export default function BridgeStudyPage() {
           padding: '10px 22px',
           borderBottom: '1px solid var(--border)',
           flexWrap: 'wrap',
-          position: 'sticky',
-          top: 60,
-          zIndex: 20,
           background: 'rgba(5,6,10,0.6)',
           backdropFilter: 'blur(8px)',
         }}
@@ -529,10 +500,15 @@ export default function BridgeStudyPage() {
                 drift={drift}
                 strandCount={strandCount}
                 conceptLabel={concept.title}
-                draftLabel={activeDraft ? (activeDraft.evaluated ? gateLabel(activeDraft.gateResult) : 'pending') : 'No draft'}
+                draftLabel={activeDraft ? (activeDraft.evaluated ? gateLabel(activeDraft.gateResult) : 'pending') : 'awaiting a draft'}
                 gateProgress={gateProgress}
                 accent={accent}
                 reducedMotion={reducedMotion}
+                caveatCount={concept.requiredCaveats.length}
+                distortions={evaluation?.distortionTypes || []}
+                hasDraft={!!activeDraft}
+                canCompose={lenses.length > 0}
+                onCompose={() => setShowComposer(true)}
               />
               {activeLens && (
                 <div
@@ -778,31 +754,3 @@ const bandCard: React.CSSProperties = {
   padding: 16,
 };
 
-function Stat({ label, value }: { label: string; value?: number }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-      <span className="mono" style={{ color: 'var(--paper)', fontSize: '0.9rem' }}>
-        {value ?? '..'}
-      </span>
-      <span style={{ fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
-    </div>
-  );
-}
-
-function BridgeMark() {
-  // a vertical bridge mark: two cores stacked, strands bending between them
-  return (
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden>
-      <defs>
-        <linearGradient id="bridge" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#5debff" />
-          <stop offset="100%" stopColor="#a78bfa" />
-        </linearGradient>
-      </defs>
-      <circle cx="17" cy="7" r="4" fill="url(#bridge)" />
-      <circle cx="17" cy="27" r="4" fill="none" stroke="url(#bridge)" strokeWidth="1.6" strokeDasharray="2 3" />
-      <path d="M17 7 C 8 14, 26 20, 17 27" fill="none" stroke="url(#bridge)" strokeWidth="1.6" />
-      <path d="M17 7 C 26 14, 8 20, 17 27" fill="none" stroke="url(#bridge)" strokeWidth="1" strokeOpacity="0.5" />
-    </svg>
-  );
-}

@@ -220,8 +220,147 @@ a {
   }
 }
 
+/* editorial masthead: a hairline rule is inked across the page from the spine */
+@keyframes cb-rule-ink {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* the fidelity desk needle settles toward its reading like a measuring gauge */
+@keyframes cb-needle-settle {
+  0% {
+    transform: rotate(-12deg);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* the empty-bridge prompt breathes so a draftless span never reads as dead */
+@keyframes cb-await {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 .rise {
   animation: cb-rise var(--dur-2) var(--ease) both;
+}
+
+/* ---- ClarityBridge editorial study masthead ---------------------------- */
+/* A printed-journal nameplate: ruled, small-caps, ink-on-paper. Deliberately
+   unlike a generic app bar, a manila folder tab, or an on-air broadcast strip. */
+.study-masthead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-shrink: 0;
+  background:
+    linear-gradient(180deg, rgba(246, 241, 232, 0.05), rgba(5, 6, 10, 0.86) 70%),
+    rgba(5, 6, 10, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.study-rule {
+  height: 1px;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--gold), rgba(247, 201, 72, 0.12) 88%, transparent);
+}
+
+.study-rule.thin {
+  background: linear-gradient(90deg, rgba(93, 235, 255, 0.5), rgba(93, 235, 255, 0.05) 80%, transparent);
+}
+
+.study-rule.draw {
+  animation: cb-rule-ink 620ms var(--ease) both;
+}
+
+.study-nameplate {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  line-height: 0.96;
+}
+
+.study-smallcaps {
+  font-variant: small-caps;
+  letter-spacing: 0.2em;
+  text-transform: lowercase;
+  font-size: 0.6rem;
+  color: var(--mist-2);
+}
+
+.study-serif {
+  font-family: var(--font-body);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+/* editorial toggle: ruled small-caps control, ink on paper, square corners */
+.edi-toggle {
+  font-family: var(--font-display);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: 0.16em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--mist);
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 5px 12px;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+
+.edi-toggle::before {
+  content: '[ ';
+  color: var(--mist-3);
+}
+.edi-toggle::after {
+  content: ' ]';
+  color: var(--mist-3);
+}
+
+.edi-toggle:hover {
+  color: var(--paper);
+  border-color: var(--gold);
+}
+
+.edi-toggle.on {
+  color: var(--gold);
+  border-color: rgba(247, 201, 72, 0.5);
+}
+
+.needle-settle {
+  animation: cb-needle-settle 560ms var(--ease) both;
+  transform-origin: bottom center;
+}
+
+.await-pulse {
+  animation: cb-await 2600ms var(--ease) infinite;
 }
 
 .kernel-form {
@@ -239,7 +378,10 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .kernel-form,
   .draft-settle,
-  .stamp-in {
+  .stamp-in,
+  .study-rule.draw,
+  .needle-settle,
+  .await-pulse {
     animation: none !important;
   }
 }
