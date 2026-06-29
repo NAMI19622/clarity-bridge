@@ -88,11 +88,9 @@ tests need no wallet and no network. To deploy, `scripts/deploy.py` reads
 and seeds the demo concept "GenLayer Intelligent Contracts" with a bad draft that
 overstates autonomy and a better draft that keeps the claims and caveats.
 
-It is live on the GenLayer Bradbury testnet at contract
-`0x13cf5282cB0E19eD2279f2a05cFCc90FFa22F03F`
-(https://explorer-bradbury.genlayer.com/address/0x13cf5282cB0E19eD2279f2a05cFCc90FFa22F03F),
-with the observatory at https://clarity-bridge.pages.dev/ and the source at
-https://github.com/NAMI19622/clarity-bridge.
+It runs on the GenLayer Bradbury testnet. The deployed contract address and
+network are carried in the frontend environment and shown in the observatory's
+about panel, so a running instance always declares the contract it reads.
 
 A closing honesty, since the project is about honesty: ClarityBridge checks
 whether a simplification preserves a supplied kernel, not whether the kernel is
